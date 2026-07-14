@@ -64,6 +64,12 @@ def extract(project: str, source_path: str) -> Iterator[Chunk]:
         relative_path = str(md_file.relative_to(source_path))
 
         for heading, body in _split_by_h2(text):
+            # TODO: filter out near-empty chunks (e.g. architecture.md's
+            # intro section is just the h1 title, ~30 chars, no real
+            # content). Observed polluting top-5 retrieval results with a
+            # near-zero-information match — add a min length threshold
+            # (something like len(body) < 50) and skip/merge such sections
+            # instead of indexing them as-is.
             chunk_text = f"{heading}\n\n{body}" if heading else body
             yield Chunk(
                 text=chunk_text,
