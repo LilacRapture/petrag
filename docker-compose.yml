@@ -1,0 +1,26 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  api:
+    build: .
+    env_file: .env
+    ports:
+      - "8001:8000"
+    volumes:
+      # Read-only mount of the local project checkout.
+      # Point this at wherever you cloned it, e.g. ../tasktracker
+      - ./sources/tasktracker:/sources/tasktracker:ro
+    depends_on:
+      - qdrant
+    extra_hosts:
+      # Docker Desktop for Mac resolves host.docker.internal automatically;
+      # this line is only needed if you ever run this on Linux.
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  qdrant_data:
