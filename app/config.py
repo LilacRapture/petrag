@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     source_project_path: str = "/sources/tasktracker"
 
     class Config:
-        env_file = ".env"
+        env_file = (".env", ".env.local")
 
 
 settings = Settings()

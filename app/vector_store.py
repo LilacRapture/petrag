@@ -1,8 +1,9 @@
 """
 Qdrant client for QUERY-time reads only.
-Collection creation / upsert logic lives in ingestion/vector_store.py.
+Kept separate from ingestion/vector_store.py (write-only, ingest-time).
 """
 from qdrant_client import QdrantClient
+from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from .config import settings
 
@@ -13,11 +14,22 @@ def get_client() -> QdrantClient:
 
 def search(query_vector: list[float], top_k: int = 5, project: str | None = None):
     """
-    TODO (next iteration step):
-    - if project is given, build a qdrant_client.models.Filter on
-      payload["project"] == project
-    - client.search(collection_name=settings.qdrant_collection,
-                     query_vector=query_vector, limit=top_k, query_filter=...)
-    - return the list of hits (each has .payload and .score)
+    Returns a list of qdrant_client.models.ScoredPoint —
+    each has .payload (text, source_file, chunk_type, project, ...) and .score.
     """
-    raise NotImplementedError
+    client = get_client()
+
+    query_filter = None
+    if project:
+        query_filter = Filter(
+            must=[FieldCondition(key="project", match=MatchValue(value=project))]
+        )
+
+    result = client.query_points(
+        collection_name=settings.qdrant_collection,
+        query=query_vector,
+        query_filter=query_filter,
+        limit=top_k,
+    )
+    return result.points
+    

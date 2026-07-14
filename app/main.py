@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 
-from .schemas import QueryRequest, QueryResponse
+from .config import settings
+from .embeddings import embed_text
+from .llm import generate_answer
+from .schemas import QueryRequest, QueryResponse, RetrievedChunk
+from .vector_store import search
 
 app = FastAPI(title="PetRAG")
 
@@ -12,11 +16,27 @@ def health():
 
 @app.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest):
-    """
-    TODO (next iteration step):
-    1. vector = embed_text(request.question)
-    2. hits = vector_store.search(vector, request.top_k, request.project)
-    3. answer = llm.generate_answer(request.question, [h.payload["text"] for h in hits])
-    4. return QueryResponse(answer=answer, sources=[...])
-    """
-    raise NotImplementedError
+    query_vector = embed_text(request.question)
+    hits = search(query_vector, top_k=request.top_k, project=request.project)
+
+    if not hits:
+        return QueryResponse(
+            answer="No relevant information found in the indexed projects.",
+            sources=[],
+        )
+
+    context_chunks = [hit.payload["text"] for hit in hits]
+    project_label = request.project or settings.source_project_name
+    answer = generate_answer(request.question, context_chunks, project_label)
+
+    sources = [
+        RetrievedChunk(
+            text=hit.payload["text"],
+            source_file=hit.payload["source_file"],
+            chunk_type=hit.payload["chunk_type"],
+            score=hit.score,
+        )
+        for hit in hits
+    ]
+    return QueryResponse(answer=answer, sources=sources)
+    
