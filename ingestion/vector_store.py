@@ -20,8 +20,6 @@ def get_client() -> QdrantClient:
 
 
 def ensure_collection(client: QdrantClient, vector_size: int) -> None:
-    """Create the collection if it doesn't exist yet. Idempotent — same
-    spirit as seed_roles.py's get_or_create in TaskTracker."""
     if not client.collection_exists(settings.qdrant_collection):
         client.create_collection(
             collection_name=settings.qdrant_collection,
@@ -29,19 +27,26 @@ def ensure_collection(client: QdrantClient, vector_size: int) -> None:
         )
 
 
+def _chunk_id(chunk) -> str:
+    """
+    Deterministic point id: re-running ingestion on the SAME section
+    (identified by project + chunk_type + source_file + its distinguishing
+    extra fields — e.g. heading for docs, symbol_name for docstrings,
+    commit_hash for commits) overwrites the existing point instead of
+    creating a duplicate, since Qdrant's upsert is id-keyed.
+
+    Deliberately excludes chunk.text from the key — editing a section's
+    content should still update the same point, not spawn a new one.
+    """
+    extra_key = ",".join(f"{k}={v}" for k, v in sorted(chunk.extra.items()))
+    natural_key = f"{chunk.project}:{chunk.chunk_type}:{chunk.source_file}:{extra_key}"
+    return str(uuid.uuid5(uuid.NAMESPACE_URL, natural_key))
+
+
 def upsert_chunks(client: QdrantClient, chunks: list, vectors: list[list[float]]) -> None:
-    """
-    Each chunk gets a fresh random UUID as its point id. That means
-    re-running ingestion on unchanged files creates DUPLICATE points
-    rather than updating existing ones — acceptable for Phase 1 (single
-    manual run), but worth flagging now: real re-ingestion support will
-    need a deterministic id (e.g. hash of source_file + heading) so
-    upsert overwrites instead of duplicating. Revisit when we design
-    incremental re-indexing.
-    """
     points = [
         PointStruct(
-            id=str(uuid.uuid4()),
+            id=_chunk_id(chunk),
             vector=vector,
             payload={
                 "text": chunk.text,
