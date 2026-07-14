@@ -1,0 +1,64 @@
+"""
+CLI entrypoint for the ingestion pipeline.
+
+Usage (run from the petrag/ root, with the venv active):
+    python -m ingestion.ingest --source readme
+
+Qdrant must be running first: docker-compose up -d qdrant
+
+If running from the host venv (not from inside the api container), the
+default QDRANT_HOST="qdrant" in .env won't resolve — that hostname only
+exists inside the docker-compose network. Override it for local runs:
+    QDRANT_HOST=localhost python -m ingestion.ingest --source readme
+"""
+import argparse
+
+from app.config import settings
+from app.embeddings import embed_text
+from ingestion import extract_readme
+from ingestion.vector_store import ensure_collection, get_client, upsert_chunks
+
+# Registry of available extractors — add extract_docstrings / extract_git_log
+# here once they're implemented (Phases 3 and 4).
+EXTRACTORS = {
+    "readme": extract_readme.extract,
+}
+
+
+def run(source: str, project: str, source_path: str) -> None:
+    extractor = EXTRACTORS[source]
+
+    chunks = list(extractor(project, source_path))
+    if not chunks:
+        print(f"No chunks extracted from source={source!r} at {source_path!r}")
+        return
+    print(f"Extracted {len(chunks)} chunks from source={source!r}")
+
+    print("Embedding chunks...")
+    vectors = [embed_text(chunk.text) for chunk in chunks]
+
+    client = get_client()
+    ensure_collection(client, vector_size=len(vectors[0]))
+    upsert_chunks(client, chunks, vectors)
+
+    by_type: dict[str, int] = {}
+    for chunk in chunks:
+        by_type[chunk.chunk_type] = by_type.get(chunk.chunk_type, 0) + 1
+    print(f"Indexed into Qdrant collection '{settings.qdrant_collection}': {by_type}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="PetRAG ingestion pipeline")
+    parser.add_argument(
+        "--source",
+        choices=sorted(EXTRACTORS),
+        required=True,
+        help="Which extractor to run",
+    )
+    args = parser.parse_args()
+
+    run(args.source, settings.source_project_name, settings.source_project_path)
+
+
+if __name__ == "__main__":
+    main()
