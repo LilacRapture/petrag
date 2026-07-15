@@ -15,12 +15,13 @@ import argparse
 import logging
 
 from app.config import settings
-from app.embeddings import embed_text
-from ingestion import extract_readme
+from app.embeddings import embed_texts
+from ingestion import extract_docstrings, extract_readme
 from ingestion.vector_store import ensure_collection, get_client, upsert_chunks
 
 EXTRACTORS = {
     "readme": extract_readme.extract,
+    "docstrings": extract_docstrings.extract,
 }
 
 
@@ -34,7 +35,7 @@ def run(source: str, project: str, source_path: str) -> None:
     print(f"Extracted {len(chunks)} chunks from source={source!r}")
 
     print("Embedding chunks...")
-    vectors = [embed_text(chunk.text) for chunk in chunks]
+    vectors = embed_texts([chunk.text for chunk in chunks])
 
     client = get_client()
     ensure_collection(client, vector_size=len(vectors[0]))
@@ -48,6 +49,7 @@ def run(source: str, project: str, source_path: str) -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
     parser = argparse.ArgumentParser(description="PetRAG ingestion pipeline")
     parser.add_argument(

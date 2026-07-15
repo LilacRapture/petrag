@@ -13,6 +13,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 
 from app.config import settings
+from .chunking import Chunk
 
 
 def get_client() -> QdrantClient:
@@ -43,7 +44,10 @@ def _chunk_id(chunk) -> str:
     return str(uuid.uuid5(uuid.NAMESPACE_URL, natural_key))
 
 
-def upsert_chunks(client: QdrantClient, chunks: list, vectors: list[list[float]]) -> None:
+_UPSERT_BATCH_SIZE = 100  # keeps each HTTP PUT well under Qdrant's default 32MB payload limit
+
+
+def upsert_chunks(client: QdrantClient, chunks: list[Chunk], vectors: list[list[float]]) -> None:
     points = [
         PointStruct(
             id=_chunk_id(chunk),
@@ -58,4 +62,7 @@ def upsert_chunks(client: QdrantClient, chunks: list, vectors: list[list[float]]
         )
         for chunk, vector in zip(chunks, vectors, strict=True)
     ]
-    client.upsert(collection_name=settings.qdrant_collection, points=points)
+
+    for i in range(0, len(points), _UPSERT_BATCH_SIZE):
+        batch = points[i : i + _UPSERT_BATCH_SIZE]
+        client.upsert(collection_name=settings.qdrant_collection, points=batch)
