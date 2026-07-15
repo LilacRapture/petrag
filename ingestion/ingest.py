@@ -16,7 +16,7 @@ import logging
 
 from app.config import settings
 from app.embeddings import embed_texts
-from ingestion import extract_docstrings, extract_git_log,  extract_readme
+from ingestion import extract_docstrings, extract_git_log, extract_readme
 from ingestion.vector_store import ensure_collection, get_client, upsert_chunks
 
 EXTRACTORS = {
