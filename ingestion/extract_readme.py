@@ -10,8 +10,8 @@ fragment sections that only make sense together — e.g. in
 docs/rbac-schema.md, the "## AccessRules per Role" section has several
 role tables that are meaningless without the surrounding "## " context.
 """
-from collections.abc import Iterator
 import logging
+from collections.abc import Iterator
 from pathlib import Path
 
 from .chunking import Chunk
