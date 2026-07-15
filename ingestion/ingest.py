@@ -12,14 +12,13 @@ exists inside the docker-compose network. Override it for local runs:
     QDRANT_HOST=localhost python -m ingestion.ingest --source readme
 """
 import argparse
+import logging
 
 from app.config import settings
 from app.embeddings import embed_text
 from ingestion import extract_readme
 from ingestion.vector_store import ensure_collection, get_client, upsert_chunks
 
-# Registry of available extractors — add extract_docstrings / extract_git_log
-# here once they're implemented (Phases 3 and 4).
 EXTRACTORS = {
     "readme": extract_readme.extract,
 }
@@ -48,6 +47,8 @@ def run(source: str, project: str, source_path: str) -> None:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(message)s")
+
     parser = argparse.ArgumentParser(description="PetRAG ingestion pipeline")
     parser.add_argument(
         "--source",
@@ -62,3 +63,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+    

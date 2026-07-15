@@ -11,11 +11,23 @@ docs/rbac-schema.md, the "## AccessRules per Role" section has several
 role tables that are meaningless without the surrounding "## " context.
 """
 from collections.abc import Iterator
+import logging
 from pathlib import Path
 
 from .chunking import Chunk
 
 _H2_PREFIX = "## "
+
+logger = logging.getLogger(__name__)
+
+# Below this length (chars, after stripping), a section is considered
+# noise rather than content — e.g. architecture.md's intro is just the
+# h1 title with nothing else, and was observed polluting top-5 retrieval
+# results with a near-zero-information match. Skipped, not merged: for
+# markdown docs these are decorative gaps, not lossy truncation of real
+# content. Revisit for extract_docstrings.py — short-but-real docstrings
+# are a different case and may warrant merging instead.
+_MIN_CHUNK_LENGTH = 50
 
 
 def _split_by_h2(text: str) -> list[tuple[str, str]]:
@@ -41,8 +53,6 @@ def _split_by_h2(text: str) -> list[tuple[str, str]]:
     if current_lines:
         sections.append((current_heading, "\n".join(current_lines).strip()))
 
-    # drop sections that are just whitespace (e.g. a header immediately
-    # followed by another header)
     return [(h, b) for h, b in sections if b]
 
 
@@ -64,12 +74,13 @@ def extract(project: str, source_path: str) -> Iterator[Chunk]:
         relative_path = str(md_file.relative_to(source_path))
 
         for heading, body in _split_by_h2(text):
-            # TODO: filter out near-empty chunks (e.g. architecture.md's
-            # intro section is just the h1 title, ~30 chars, no real
-            # content). Observed polluting top-5 retrieval results with a
-            # near-zero-information match — add a min length threshold
-            # (something like len(body) < 50) and skip/merge such sections
-            # instead of indexing them as-is.
+            if len(body) < _MIN_CHUNK_LENGTH:
+                logger.info(
+                    "Skipping short section: file=%s heading=%r len=%d",
+                    relative_path, heading, len(body),
+                )
+                continue
+
             chunk_text = f"{heading}\n\n{body}" if heading else body
             yield Chunk(
                 text=chunk_text,
