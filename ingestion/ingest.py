@@ -59,9 +59,19 @@ def main() -> None:
         required=True,
         help="Which extractor to run",
     )
+    parser.add_argument(
+        "--project",
+        default=settings.source_project_name,
+        help=f"Project name stored in chunk metadata (default from .env: {settings.source_project_name!r})",
+    )
+    parser.add_argument(
+        "--path",
+        default=settings.source_project_path,
+        help=f"Path to the project checkout (default from .env: {settings.source_project_path!r})",
+    )
     args = parser.parse_args()
 
-    run(args.source, settings.source_project_name, settings.source_project_path)
+    run(args.source, args.project, args.path)
 
 
 if __name__ == "__main__":

@@ -12,9 +12,10 @@ services:
     ports:
       - "8001:8000"
     volumes:
-      # Read-only mount of the local project checkout.
-      # Point this at wherever you cloned it, e.g. ../tasktracker
-      - ./sources/tasktracker:/sources/tasktracker:ro
+      # Read-only mount of the whole sources/ dir — covers every project
+      # symlinked inside it (tasktracker, dnd_backend, fairytale, ...),
+      # so adding a new project needs a symlink here, not a new compose line.
+      - ./sources:/sources:ro
     depends_on:
       - qdrant
     extra_hosts:
