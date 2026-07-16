@@ -248,3 +248,34 @@ parsing library.
 - Extraction is wrapped in `try/except` around `subprocess.run`, so a
   missing `.git` directory degrades to zero commit chunks + a warning
   log, rather than crashing the whole ingest run for other sources
+
+---
+
+## ADR-011 — CLI flags for multi-project ingestion, single shared collection
+
+**Date:** Phase 5
+**Status:** Accepted
+
+**Decision:** `ingest.py` gained `--project`/`--path` CLI arguments,
+defaulting to `SOURCE_PROJECT_NAME`/`SOURCE_PROJECT_PATH` from `.env` when
+omitted. All projects (TaskTracker, DnD Backend, Fairytale) share ONE
+Qdrant collection, distinguished by the `project` field in each point's
+payload — not one collection per project.
+
+**Context:** Adding a second/third indexed project needed some way to
+pass project identity without editing `.env`/`.env.local` before every
+`ingest.py` run.
+
+**Alternatives considered:**
+- One Qdrant collection per project — simpler filtering (no payload
+  filter needed), but rules out cross-project questions entirely
+  ("which of my projects uses JWT auth"), which was an explicit goal
+  from the original project scoping discussion
+
+**Consequences:**
+- `search()`'s existing `project` filter parameter (already built in
+  Phase 2, unused until now) is what makes per-project isolation work —
+  verified via a query scoped to `dnd_backend` returning zero
+  TaskTracker/Fairytale sources
+- Cross-project questions (unscoped `project=None`) become possible but
+  untested so far — worth trying once more projects are indexed
