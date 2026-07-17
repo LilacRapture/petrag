@@ -19,6 +19,8 @@ from app.embeddings import embed_texts
 from ingestion import extract_docstrings, extract_git_log, extract_readme
 from ingestion.vector_store import ensure_collection, get_client, upsert_chunks
 
+logger = logging.getLogger(__name__)
+
 EXTRACTORS = {
     "readme": extract_readme.extract,
     "docstrings": extract_docstrings.extract,
@@ -31,11 +33,11 @@ def run(source: str, project: str, source_path: str) -> None:
 
     chunks = list(extractor(project, source_path))
     if not chunks:
-        print(f"No chunks extracted from source={source!r} at {source_path!r}")
+        logger.info("No chunks extracted from source=%r at %r", source, source_path)
         return
-    print(f"Extracted {len(chunks)} chunks from source={source!r}")
+    logger.info("Extracted %d chunks from source=%r", len(chunks), source)
 
-    print("Embedding chunks...")
+    logger.info("Embedding chunks...")
     vectors = embed_texts([chunk.text for chunk in chunks])
 
     client = get_client()
@@ -45,7 +47,7 @@ def run(source: str, project: str, source_path: str) -> None:
     by_type: dict[str, int] = {}
     for chunk in chunks:
         by_type[chunk.chunk_type] = by_type.get(chunk.chunk_type, 0) + 1
-    print(f"Indexed into Qdrant collection '{settings.qdrant_collection}': {by_type}")
+    logger.info("Indexed into Qdrant collection '%s': %s", settings.qdrant_collection, by_type)
 
 
 def main() -> None:
