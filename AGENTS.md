@@ -38,7 +38,6 @@ Two independent processes — see docs/decisions.md for why:
 ### Phase 4 — Done
 - [x] extract_git_log.py (control-character-delimited git log parsing)
 
-### Phase 5 — Next
-- [ ] Second/third project (DnD Backend, Fairytale) — single Qdrant
-      collection with `project` payload filter (decision already made:
-      one collection, not one per project — see original plan discussion)
+### Phase 5 — Done
+- [x] Second/third project (DnD Backend, Fairytale) — single Qdrant
+      collection with `project` payload filter
