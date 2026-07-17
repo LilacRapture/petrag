@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -14,8 +14,7 @@ class Settings(BaseSettings):
     source_project_name: str = "tasktracker"
     source_project_path: str = "/sources/tasktracker"
 
-    class Config:
-        env_file = (".env", ".env.local")
+    model_config = SettingsConfigDict(env_file=(".env", ".env.local"))
 
 
 settings = Settings()
