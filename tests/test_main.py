@@ -42,6 +42,20 @@ def _mock_embed(monkeypatch):
     monkeypatch.setattr(main_module, "embed_text", lambda text: [0.0] * 384)
 
 
+# ---------------------------------------------------------------------------
+# App startup (lifespan)
+# ---------------------------------------------------------------------------
+
+def test_lifespan_warms_up_embedder_on_startup(monkeypatch):
+    warmup_calls = []
+    monkeypatch.setattr(main_module, "get_embedder", lambda: warmup_calls.append(True))
+
+    with TestClient(app) as _:
+        pass  # entering/exiting the context triggers lifespan startup/shutdown
+
+    assert warmup_calls == [True]
+
+
 def test_health_check():
     response = client.get("/health")
     assert response.status_code == 200

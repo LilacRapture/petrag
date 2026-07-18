@@ -1,18 +1,28 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from httpx import ConnectError, HTTPStatusError, TimeoutException
 from qdrant_client.http.exceptions import ApiException
 
 from .config import settings
-from .embeddings import embed_text
+from .embeddings import embed_text, get_embedder
 from .llm import generate_answer
 from .schemas import QueryRequest, QueryResponse, RetrievedChunk
 from .vector_store import search
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="PetRAG")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Warming up embedding model...")
+    get_embedder()  # loads the model into memory now, not on the first /query
+    logger.info("Embedding model ready.")
+    yield
+
+
+app = FastAPI(title="PetRAG", lifespan=lifespan)
 
 
 @app.get("/health")
