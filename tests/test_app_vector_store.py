@@ -28,6 +28,33 @@ class _FakeClient:
         return _FakeQueryResult(points=["fake-point-1", "fake-point-2"])
 
 
+# ---------------------------------------------------------------------------
+# get_client() — cached QdrantClient instance
+# ---------------------------------------------------------------------------
+
+def test_get_client_is_cached_across_calls(monkeypatch):
+    created = []
+
+    class _FakeQdrantClient:
+        def __init__(self, **kwargs):
+            created.append(kwargs)
+
+    monkeypatch.setattr(vector_store, "QdrantClient", _FakeQdrantClient)
+    vector_store.get_client.cache_clear()
+
+    first = vector_store.get_client()
+    second = vector_store.get_client()
+
+    assert first is second
+    assert len(created) == 1
+
+    vector_store.get_client.cache_clear()
+
+
+# ---------------------------------------------------------------------------
+# search() — vector search with optional project filter
+# ---------------------------------------------------------------------------
+
 def test_search_without_project_uses_no_filter(monkeypatch):
     fake_client = _FakeClient()
     monkeypatch.setattr(vector_store, "get_client", lambda: fake_client)
@@ -65,4 +92,3 @@ def test_search_passes_through_collection_name_top_k_and_vector(monkeypatch):
     assert call["collection_name"] == vector_store.settings.qdrant_collection
     assert call["limit"] == 3
     assert call["query"] == [0.1]
-    

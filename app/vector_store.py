@@ -2,12 +2,15 @@
 Qdrant client for QUERY-time reads only.
 Kept separate from ingestion/vector_store.py (write-only, ingest-time).
 """
+from functools import lru_cache
+
 from qdrant_client import QdrantClient
 from qdrant_client.models import FieldCondition, Filter, MatchValue
 
 from .config import settings
 
 
+@lru_cache
 def get_client() -> QdrantClient:
     return QdrantClient(host=settings.qdrant_host, port=settings.qdrant_port)
 
