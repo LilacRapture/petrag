@@ -18,6 +18,11 @@ def _fake_chunk(text, chunk_type="doc"):
     return Chunk(text=text, source_file="README.md", chunk_type=chunk_type, project="myproject", extra={})
 
 
+# ---------------------------------------------------------------------------
+# run() — single-source pipeline (extract -> embed -> ensure_collection -> upsert)
+# ---------------------------------------------------------------------------
+
+
 def test_run_short_circuits_on_no_chunks(monkeypatch, caplog):
     caplog.set_level("INFO")
     monkeypatch.setitem(ingest.EXTRACTORS, "readme", lambda project, path: iter([]))
@@ -82,4 +87,21 @@ def test_run_prints_summary_grouped_by_chunk_type(monkeypatch, caplog):
 
     assert "'doc': 1" in caplog.text
     assert "'docstring': 2" in caplog.text
-    
+
+
+# ---------------------------------------------------------------------------
+# main() — CLI argument handling
+# ---------------------------------------------------------------------------
+
+
+def test_main_with_source_all_runs_every_extractor(monkeypatch):
+    calls = []
+    monkeypatch.setattr(ingest, "run", lambda source, project, path: calls.append(source))
+    monkeypatch.setattr(
+        "sys.argv",
+        ["ingest.py", "--source", "all", "--project", "myproject", "--path", "/some/path"],
+    )
+
+    ingest.main()
+
+    assert calls == sorted(ingest.EXTRACTORS)  # alphabetical: docstrings, git_log, readme

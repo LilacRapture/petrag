@@ -3,6 +3,7 @@ CLI entrypoint for the ingestion pipeline.
 
 Usage (run from the petrag/ root, with the venv active):
     python -m ingestion.ingest --source readme
+    python -m ingestion.ingest --source all      # runs every extractor in turn
 
 Qdrant must be running first: docker-compose up -d qdrant
 
@@ -57,9 +58,9 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="PetRAG ingestion pipeline")
     parser.add_argument(
         "--source",
-        choices=sorted(EXTRACTORS),
+        choices=[*sorted(EXTRACTORS), "all"],
         required=True,
-        help="Which extractor to run",
+        help="Which extractor to run, or 'all' to run every extractor in turn",
     )
     parser.add_argument(
         "--project",
@@ -73,7 +74,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    run(args.source, args.project, args.path)
+    sources = sorted(EXTRACTORS) if args.source == "all" else [args.source]
+    for source in sources:
+        run(source, args.project, args.path)
 
 
 if __name__ == "__main__":
